@@ -15,7 +15,7 @@ if sys.stdin.encoding and sys.stdin.encoding.lower() != "utf-8":
     except Exception:
         pass
 
-from duplicate_logic import compute_question_similarity
+from duplicate_logic import find_similar_questions
 
 QUESTIONS_JSON = os.path.join(os.path.dirname(__file__), "questions.json")
 THRESHOLD = 0.3  # 综合相似度 >= 此值视为高度相似
@@ -53,33 +53,23 @@ def main() -> None:
         print("questions.json 中暂无题目。")
         return
 
-    results = []
-    for i, q in enumerate(questions):
-        sim = compute_question_similarity(user_question, q)
-        results.append((i + 1, q, sim))
-
-    results.sort(key=lambda x: x[2]["overall"], reverse=True)
+    results = find_similar_questions(user_question, questions, threshold=THRESHOLD)
 
     print()
     print(f"与 JSON 中 {len(questions)} 道题比较后，综合相似度 >= {THRESHOLD:.0%} 的题目如下：")
     print("-" * 50)
 
-    found = False
-    for idx, q, sim in results:
-        if sim["overall"] < THRESHOLD:
-            continue
-        found = True
-        print(f"--- 第 {idx} 题（综合相似度 {sim['overall']:.2%}）---")
-        print(f"  题目相似度: {sim['content']:.2%}  解析相似度: {sim['explanation']:.2%}  答案相似度: {sim['answer']:.2%}")
-        content_preview = (q.get("content") or "").strip()
-        if len(content_preview) > 70:
-            content_preview = content_preview[:70] + "..."
-        print(f"  题干: {content_preview}")
-        print()
-
-    if not found:
+    if not results:
         print("未发现高度相似的题目。")
     else:
+        for idx, q, sim in results:
+            print(f"--- 第 {idx} 题（综合相似度 {sim['overall']:.2%}）---")
+            print(f"  题目相似度: {sim['content']:.2%}  解析相似度: {sim['explanation']:.2%}  答案相似度: {sim['answer']:.2%}")
+            content_preview = (q.get("content") or "").strip()
+            if len(content_preview) > 70:
+                content_preview = content_preview[:70] + "..."
+            print(f"  题干: {content_preview}")
+            print()
         print("（以上按综合相似度从高到低排列）")
 
 

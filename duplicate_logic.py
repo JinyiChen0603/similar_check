@@ -67,6 +67,45 @@ def compute_question_similarity(
     }
 
 
+def find_similar_questions(
+    user_question: dict,
+    question_list: list[dict],
+    *,
+    threshold: float = 0.3,
+    top_k: int | None = None,
+    weight_content: float = 0.5,
+    weight_explanation: float = 0.3,
+    weight_answer: float = 0.2,
+) -> list[tuple[int, dict, dict]]:
+    """
+    在一道题与题目列表中找出综合相似度 >= 阈值的题目，按综合相似度从高到低排序。
+
+    :param user_question: 待比较的题目 dict，需含 content, explanation, answer（可缺省）
+    :param question_list: 题目列表，每项为同结构的 dict
+    :param threshold: 综合相似度 >= 此值才纳入结果，默认 0.3
+    :param top_k: 最多返回几条，None 表示不限制
+    :param weight_content: 题目权重，默认 0.5
+    :param weight_explanation: 解析权重，默认 0.3
+    :param weight_answer: 答案权重，默认 0.2
+    :return: [(题目序号从1起, 题目dict, 相似度dict), ...]，按 overall 降序
+    """
+    results = []
+    for i, q in enumerate(question_list):
+        sim = compute_question_similarity(
+            user_question,
+            q,
+            weight_content=weight_content,
+            weight_explanation=weight_explanation,
+            weight_answer=weight_answer,
+        )
+        if sim["overall"] >= threshold:
+            results.append((i + 1, q, sim))
+    results.sort(key=lambda x: x[2]["overall"], reverse=True)
+    if top_k is not None:
+        results = results[:top_k]
+    return results
+
+
 def check_duplicate(
     question_text: str,
     conn: sqlite3.Connection,
